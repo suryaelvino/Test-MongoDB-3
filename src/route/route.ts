@@ -15,7 +15,6 @@ router.get('/projects/:projectId/tasks', task.getAllTasksByProjectId);
 router.get('/projects/:projectId/completedtasks', task.getAllTasksCompletedByProjectId);
 router.get('/projects/:projectId/uncompletedtasks', task.getAllTasksUncompletedByProjectId);
 router.get('/tasks/search', task.searchTasksByKeyword);
-router.get('/tasks/search/:projectId', task.searchTasksByProjectId);
 router.put('/tasks/:id', task.updateTask);
 router.put('/completedtasks/:id', task.completedTask);
 router.delete('/tasks/:id', task.deleteTask);

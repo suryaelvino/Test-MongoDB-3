@@ -19,17 +19,32 @@ export const createTask = async (req: Request, res: Response) => {
         return res.status(code.UNPROCESSABLE_ENTITY).json({ message: 'startTime must be earlier than endTime' });
     }
     try {
+        // Cari proyek berdasarkan ID yang diberikan
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(code.NOT_FOUND).json({ message: `Project with ${projectId} not found` });
         }
         // Validasi: pastikan tidak ada tugas yang saling tumpang tindih dalam waktu
+        const overlappingTasks = [];
         const existingTasks = await Task.find({ projectId: projectId });
         for (const existingTask of existingTasks) {
             if (doTasksOverlap(existingTask.startTime, existingTask.endTime, startTimeDate, endTimeDate)) {
-                return res.status(code.UNPROCESSABLE_ENTITY).json({ message: 'Task overlaps with an existing task' });
+                overlappingTasks.push({
+                    id: existingTask._id,
+                    title: existingTask.title,
+                    description: existingTask.description,
+                    startTime: existingTask.startTime,
+                    endTime: existingTask.endTime,
+                });
             }
         }
+        if (overlappingTasks.length > 0) {
+            return res.status(code.UNPROCESSABLE_ENTITY).json({
+                message: 'Task overlaps with existing tasks',
+                data: overlappingTasks,
+            });
+        }
+        // Buat objek task baru
         const task = new Task({
             title,
             description,
@@ -37,11 +52,15 @@ export const createTask = async (req: Request, res: Response) => {
             endTime: endTimeDate,
             projectId: project._id,
         });
+        // Simpan task baru ke dalam database
         await task.save();
+        // Tambahkan task ke dalam array tasks pada objek project
         project.tasks.push(task._id);
         await project.save();
-        res.status(code.CREATED).json({message: 'Successfully create new task', data : task });
+        // Kirim respons sukses dengan data task yang telah dibuat
+        res.status(code.CREATED).json({ message: 'Successfully create new task', data: task });
     } catch (error: unknown) {
+        // Tangani kesalahan yang terjadi selama proses
         if (error instanceof Error) {
             res.status(code.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create task', error: error.message });
         } else {
@@ -50,12 +69,16 @@ export const createTask = async (req: Request, res: Response) => {
     }
 };
 
+
 export const getAllTasksByProjectId = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     try {
         const project = await Project.findById(projectId).populate('tasks');
         if (!project) {
             return res.status(code.NOT_FOUND).json({ message: `Project with ${projectId} not found`, data : null });
+        }
+        if (project.tasks.length === 0) {
+            return res.status(code.NOT_FOUND).json({ message: `No tasks found for project ${projectId}`, data : null });
         }
         res.status(code.OK).json({message: `Successfully get all task with project ${projectId}`, data : project.tasks});
     } catch (error: unknown) {
@@ -75,6 +98,9 @@ export const getAllTasksCompletedByProjectId = async (req: Request, res: Respons
     }
     try {
         const tasks = await Task.find({ project: projectId, completed: true });
+        if (tasks.length === 0) {
+            return res.status(code.NOT_FOUND).json({ message: `No completed tasks found for project ${projectId}` });
+        }
         return res.status(code.OK).json({ message: `Successfully get all completed tasks with project ${projectId}`, data: tasks });
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -94,6 +120,9 @@ export const getAllTasksUncompletedByProjectId = async (req: Request, res: Respo
     }
     try {
         const tasks = await Task.find({ project: projectId, completed: false });
+        if (tasks.length === 0) {
+            return res.status(code.NOT_FOUND).json({ message: `No uncompleted tasks found for project ${projectId}` });
+        }
         return res.status(code.OK).json({ message: `Successfully get all uncompleted tasks with project ${projectId}`, data: tasks });
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -126,11 +155,26 @@ export const updateTask = async (req: Request, res: Response) => {
         }
         // Cari semua task lain dalam proyek yang sama
         const otherTasks = await Task.find({ _id: { $ne: id }, projectId: existingTask.projectId });
+        // Array untuk menyimpan informasi task yang tumpang tindih
+        const overlappingTasks: any[] = [];
         // Validasi: periksa tumpang tindih waktu dengan task lain
         for (const task of otherTasks) {
             if (doTasksOverlap(task.startTime, task.endTime, startTimeDate, endTimeDate)) {
-                return res.status(code.UNPROCESSABLE_ENTITY).json({ message: 'Task overlaps with an existing task' });
+                overlappingTasks.push({
+                    id: task._id,
+                    title: task.title,
+                    description: task.description,
+                    startTime: task.startTime,
+                    endTime: task.endTime,
+                });
             }
+        }
+        // Jika terdapat tumpang tindih, kirimkan respons dengan daftar task yang bertabrakan
+        if (overlappingTasks.length > 0) {
+            return res.status(code.UNPROCESSABLE_ENTITY).json({
+                message: 'Task overlaps with existing tasks',
+                data : overlappingTasks,
+            });
         }
         // Lakukan pembaruan task
         const updatedTask = await Task.findByIdAndUpdate(
@@ -143,6 +187,7 @@ export const updateTask = async (req: Request, res: Response) => {
             },
             { new: true }
         );
+        // Kirim respons sukses dengan data task yang telah diperbarui
         return res.status(code.OK).json({ message: `Successfully update task with ${id}`, data: updatedTask });
     } catch (error: unknown) {
         // Tangani kesalahan yang terjadi selama proses
@@ -199,44 +244,6 @@ export const searchTasksByKeyword = async (req: Request, res: Response) => {
             return res.status(code.NOT_FOUND).json({ message: `No tasks found matching the search term '${q}'`, data: null });
         }
         return res.status(code.OK).json({ message: 'Successfully retrieved tasks by keyword', data: tasks });
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            return res.status(code.INTERNAL_SERVER_ERROR).json({ message: 'Failed to search tasks', error: error.message });
-        } else {
-            return res.status(code.INTERNAL_SERVER_ERROR).json({ message: 'An unexpected error occurred' });
-        }
-    }
-};
-
-export const searchTasksByProjectId = async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-    const { q } = req.query;
-
-    // Validasi parameter query projectId
-    if (!projectId || typeof projectId !== 'string' || projectId.trim() === '') {
-        return res.status(code.BAD_REQUEST).json({ message: 'Parameter projectId in params is required and must be a non-empty string' });
-    }
-
-    try {
-        // Membuat filter berdasarkan projectId dan opsi tambahan pencarian q (jika ada)
-        const filter: any = { project: projectId };
-        if (q && typeof q === 'string' && q.trim() !== '') {
-            // Menambahkan pencarian berdasarkan kata kunci (contoh: mencari title atau description yang mengandung q)
-            filter.$or = [
-                { title: { $regex: q, $options: 'i' } }, // 'i' berarti case-insensitive
-                { description: { $regex: q, $options: 'i' } }
-            ];
-        }
-
-        // Mencari tugas berdasarkan filter
-        const tasks = await Task.find(filter);
-
-        // Jika tidak ada hasil pencarian, kembalikan respons NOT_FOUND
-        if (tasks.length === 0) {
-            return res.status(code.NOT_FOUND).json({ message: `No tasks found for project ${projectId} with search term '${q}'`, data: null });
-        }
-
-        return res.status(code.OK).json({ message: `Successfully retrieved tasks for project ${projectId} with search term '${q}'`, data: tasks });
     } catch (error: unknown) {
         if (error instanceof Error) {
             return res.status(code.INTERNAL_SERVER_ERROR).json({ message: 'Failed to search tasks', error: error.message });

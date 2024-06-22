@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*.ts", "src/logging/**/*.ts"], // Include logging directory
   "exclude": ["node_modules"]
 }

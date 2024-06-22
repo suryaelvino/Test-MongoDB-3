@@ -29,6 +29,9 @@ export const createProject = async (req: Request, res: Response) => {
 export const getAllProjects = async (req: Request, res: Response) => {
     try {
         const projects = await Project.find();
+        if (projects.length === 0) {
+            return res.status(code.NOT_FOUND).json({ message: 'No projects found', data: null });
+        }
         return res.status(code.OK).json({ message: 'Success get all projects', data: projects });
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -38,6 +41,7 @@ export const getAllProjects = async (req: Request, res: Response) => {
         }
     }
 };
+
 
 export const getProjectById = async (req: Request, res: Response) => {
     const { id } = req.params;
