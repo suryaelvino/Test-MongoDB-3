@@ -3,27 +3,47 @@ import Task from '../model/taskModel';
 import Project from '../model/projectModel';
 import code from 'http-status-codes';
 import projectModel from '../model/projectModel';
+import path from 'path';
+
+
+const isISO8601 = (str: string): boolean => {
+    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?$/;
+    return iso8601Regex.test(str);
+};
 
 export const createTask = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { title, description, startTime, endTime } = req.body;
+
     // Validasi data yang dibutuhkan
     if (!title || !startTime || !endTime) {
         return res.status(code.BAD_REQUEST).json({ message: 'Missing required fields: title, startTime, endTime' });
     }
+
+    // Validasi tipe data dan format
+    if (typeof title !== 'string' || typeof description !== 'string') {
+        return res.status(code.BAD_REQUEST).json({ message: 'title and description must be strings' });
+    }
+    if (!isISO8601(startTime) || !isISO8601(endTime)) {
+        return res.status(code.BAD_REQUEST).json({ message: 'startTime and endTime must be valid ISO 8601 strings' });
+    }
+
     // Konversi startTime dan endTime ke objek Date
     const startTimeDate = new Date(startTime);
     const endTimeDate = new Date(endTime);
+
     // Validasi: pastikan startTime lebih awal dari endTime
     if (startTimeDate >= endTimeDate) {
         return res.status(code.UNPROCESSABLE_ENTITY).json({ message: 'startTime must be earlier than endTime' });
     }
+
     try {
         // Cari proyek berdasarkan ID yang diberikan
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(code.NOT_FOUND).json({ message: `Project with ${projectId} not found` });
         }
+
         // Validasi: pastikan tidak ada tugas yang saling tumpang tindih dalam waktu
         const overlappingTasks = [];
         const existingTasks = await Task.find({ projectId: projectId });
@@ -44,6 +64,7 @@ export const createTask = async (req: Request, res: Response) => {
                 data: overlappingTasks,
             });
         }
+
         // Buat objek task baru
         const task = new Task({
             title,
@@ -52,13 +73,16 @@ export const createTask = async (req: Request, res: Response) => {
             endTime: endTimeDate,
             projectId: project._id,
         });
+
         // Simpan task baru ke dalam database
         await task.save();
+
         // Tambahkan task ke dalam array tasks pada objek project
         project.tasks.push(task._id);
         await project.save();
+
         // Kirim respons sukses dengan data task yang telah dibuat
-        res.status(code.CREATED).json({ message: 'Successfully create new task', data: task });
+        res.status(code.CREATED).json({ message: 'Successfully created new task', data: task });
     } catch (error: unknown) {
         // Tangani kesalahan yang terjadi selama proses
         if (error instanceof Error) {
@@ -137,8 +161,16 @@ export const updateTask = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, description, startTime, endTime } = req.body;
     // Validasi data yang dibutuhkan
-    if (!id || !title || !startTime || !endTime) {
-        return res.status(code.BAD_REQUEST).json({ message: 'Missing required fields: id, title, startTime, endTime' });
+    if (!title || !startTime || !endTime) {
+        return res.status(code.BAD_REQUEST).json({ message: 'Missing required fields: title, startTime, endTime' });
+    }
+
+    // Validasi tipe data dan format
+    if (typeof title !== 'string' || typeof description !== 'string') {
+        return res.status(code.BAD_REQUEST).json({ message: 'title and description must be strings' });
+    }
+    if (!isISO8601(startTime) || !isISO8601(endTime)) {
+        return res.status(code.BAD_REQUEST).json({ message: 'startTime and endTime must be valid ISO 8601 strings' });
     }
     // Konversi startTime dan endTime ke objek Date
     const startTimeDate = new Date(startTime);

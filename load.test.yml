@@ -1,0 +1,12 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 1
+      arrivalRate: 100
+scenarios:
+  - flow:
+      - get:
+          url: "/projects/6676b3b45fdba47a77517839/tasks"
+          # withQueryParams:
+          #   page: 5
+          #   limit: 100

@@ -6,9 +6,14 @@
     "auditLog": "D:\\Project\\Test-Nodejs-3\\src\\logging\\logs\\.0d7fdfa44b0740df146e3ea496ec82a771b83cdd-audit.json",
     "files": [
         {
-            "date": 1719063678999,
+            "date": 1719072439853,
             "name": "D:\\Project\\Test-Nodejs-3\\src\\logging\\logs\\application-2024-06-22.log",
-            "hash": "d0a865810a21252d614af4495ac647595648b6d320790d922fb50805019b2ea5"
+            "hash": "1c2e9c35b3e895e6ef43c7dcc4560e2c4576974834de68b9c9bb1588d4138b27"
+        },
+        {
+            "date": 1719124141271,
+            "name": "D:\\Project\\Test-Nodejs-3\\src\\logging\\logs\\application-2024-06-23.log",
+            "hash": "d44d3c9c390254affb488457676be362f97ec0dd69517065b17096572ebf9dcd"
         }
     ],
     "hashType": "sha256"
