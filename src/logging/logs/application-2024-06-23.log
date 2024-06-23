@@ -195,3 +195,11 @@
 {"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/uncompletedtasks - 42ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:20:15"}
 {"level":"info","message":"[GET] 404 - /projects/66783b90eabaac44c6e9718b/completedtasks - 6ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:20:19"}
 {"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/tasks - 32ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:21:55"}
+{"level":"info","message":"[PUT] 200 - /completedtasks/66783bae040602bf9b39fafa - 15ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:22:23"}
+{"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/uncompletedtasks - 8ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:22:33"}
+{"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/completedtasks - 5ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:22:36"}
+{"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/tasks - 8ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:22:40"}
+{"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/tasks - 24ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:31:32"}
+{"level":"info","message":"[POST] 201 - /projects/66783b90eabaac44c6e9718b/tasks - 36ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:31:53"}
+{"level":"info","message":"[DELETE] 200 - /tasks/66783fe9bd12df5242c76260 - 6ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:32:07"}
+{"level":"info","message":"[GET] 200 - /projects/66783b90eabaac44c6e9718b/tasks - 10ms - User-Agent: PostmanRuntime/7.39.0","timestamp":"2024-06-23 22:32:12"}

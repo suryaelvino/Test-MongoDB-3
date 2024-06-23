@@ -19,7 +19,13 @@ const mongoURL = process.env.MONGO_URL || 'mongodb://localhost:27017/mydatabase'
 function connectToMongoDB() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield mongoose_1.default.connect(mongoURL);
+            yield mongoose_1.default.connect(mongoURL, {
+                maxPoolSize: 100,
+                minPoolSize: 0,
+                connectTimeoutMS: 10000,
+                maxIdleTimeMS: 30000,
+                waitQueueTimeoutMS: 20000,
+            });
             console.log('Connected to MongoDB');
         }
         catch (error) {

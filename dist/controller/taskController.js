@@ -13,13 +13,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteTask = exports.searchTasksByKeyword = exports.completedTask = exports.updateTask = exports.getAllTasksUncompletedByProjectId = exports.getAllTasksCompletedByProjectId = exports.getAllTasksByProjectId = exports.createTask = void 0;
-const worker_threads_1 = require("worker_threads");
 const taskModel_1 = __importDefault(require("../model/taskModel"));
 const projectModel_1 = __importDefault(require("../model/projectModel"));
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
-const path_1 = __importDefault(require("path"));
-// Path ke file worker
-const workerPath = path_1.default.resolve(__dirname, '../worker/taskWorker.js');
 const isISO8601 = (str) => {
     const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z?$/;
     return iso8601Regex.test(str);
@@ -38,26 +34,64 @@ const createTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     if (!isISO8601(startTime) || !isISO8601(endTime)) {
         return res.status(http_status_codes_1.default.BAD_REQUEST).json({ message: 'startTime and endTime must be valid ISO 8601 strings' });
     }
-    // Gunakan worker thread untuk membuat tugas
-    const worker = new worker_threads_1.Worker(workerPath, {
-        workerData: { projectId, title, description, startTime, endTime },
-    });
-    worker.on('message', (message) => {
-        if (message.success) {
-            res.status(http_status_codes_1.default.CREATED).json({ message: 'Successfully created new task', data: message.task });
+    // Konversi startTime dan endTime ke objek Date
+    const startTimeDate = new Date(startTime);
+    const endTimeDate = new Date(endTime);
+    // Validasi: pastikan startTime lebih awal dari endTime
+    if (startTimeDate >= endTimeDate) {
+        return res.status(http_status_codes_1.default.UNPROCESSABLE_ENTITY).json({ message: 'startTime must be earlier than endTime' });
+    }
+    try {
+        // Cari proyek berdasarkan ID yang diberikan
+        const project = yield projectModel_1.default.findById(projectId);
+        if (!project) {
+            return res.status(http_status_codes_1.default.NOT_FOUND).json({ message: `Project with ${projectId} not found` });
+        }
+        // Validasi: pastikan tidak ada tugas yang saling tumpang tindih dalam waktu
+        const overlappingTasks = [];
+        const existingTasks = yield taskModel_1.default.find({ projectId: projectId });
+        for (const existingTask of existingTasks) {
+            if (doTasksOverlap(existingTask.startTime, existingTask.endTime, startTimeDate, endTimeDate)) {
+                overlappingTasks.push({
+                    id: existingTask._id,
+                    title: existingTask.title,
+                    description: existingTask.description,
+                    startTime: existingTask.startTime,
+                    endTime: existingTask.endTime,
+                });
+            }
+        }
+        if (overlappingTasks.length > 0) {
+            return res.status(http_status_codes_1.default.UNPROCESSABLE_ENTITY).json({
+                message: 'Task overlaps with existing tasks',
+                data: overlappingTasks,
+            });
+        }
+        // Buat objek task baru
+        const task = new taskModel_1.default({
+            title,
+            description,
+            startTime: startTimeDate,
+            endTime: endTimeDate,
+            projectId: project._id,
+        });
+        // Simpan task baru ke dalam database
+        yield task.save();
+        // Tambahkan task ke dalam array tasks pada objek project
+        project.tasks.push(task._id);
+        yield project.save();
+        // Kirim respons sukses dengan data task yang telah dibuat
+        res.status(http_status_codes_1.default.CREATED).json({ message: 'Successfully created new task', data: task });
+    }
+    catch (error) {
+        // Tangani kesalahan yang terjadi selama proses
+        if (error instanceof Error) {
+            res.status(http_status_codes_1.default.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create task', error: error.message });
         }
         else {
-            res.status(http_status_codes_1.default.UNPROCESSABLE_ENTITY).json({ message: message.message });
+            res.status(http_status_codes_1.default.INTERNAL_SERVER_ERROR).json({ message: 'An unexpected error occurred' });
         }
-    });
-    worker.on('error', (error) => {
-        res.status(http_status_codes_1.default.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create task', error: error.message });
-    });
-    worker.on('exit', (exitCode) => {
-        if (exitCode !== 0) {
-            res.status(http_status_codes_1.default.INTERNAL_SERVER_ERROR).json({ message: `Worker stopped with exit code ${http_status_codes_1.default}` });
-        }
-    });
+    }
 });
 exports.createTask = createTask;
 const getAllTasksByProjectId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -89,7 +123,7 @@ const getAllTasksCompletedByProjectId = (req, res) => __awaiter(void 0, void 0, 
         return res.status(http_status_codes_1.default.BAD_REQUEST).json({ message: 'Missing required parameter: projectId' });
     }
     try {
-        const tasks = yield taskModel_1.default.find({ project: projectId, completed: true });
+        const tasks = yield taskModel_1.default.find({ projectId: projectId, completed: true });
         if (tasks.length === 0) {
             return res.status(http_status_codes_1.default.NOT_FOUND).json({ message: `No completed tasks found for project ${projectId}` });
         }
@@ -112,7 +146,7 @@ const getAllTasksUncompletedByProjectId = (req, res) => __awaiter(void 0, void 0
         return res.status(http_status_codes_1.default.BAD_REQUEST).json({ message: 'Missing required parameter: projectId' });
     }
     try {
-        const tasks = yield taskModel_1.default.find({ project: projectId, completed: false });
+        const tasks = yield taskModel_1.default.find({ projectId: projectId, completed: false });
         if (tasks.length === 0) {
             return res.status(http_status_codes_1.default.NOT_FOUND).json({ message: `No uncompleted tasks found for project ${projectId}` });
         }

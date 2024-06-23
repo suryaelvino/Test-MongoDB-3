@@ -6,7 +6,7 @@ config:
 scenarios:
   - flow:
       - get:
-          url: "/projects/6676b3b45fdba47a77517839/tasks"
+          url: "/projects"
           # withQueryParams:
           #   page: 5
           #   limit: 100
